@@ -13,12 +13,14 @@ namespace LoggerCSharp.LogUtil
     public static class Logger
     {
         private const string LogBaseRegKey = @"SOFTWARE\LoggerCSharp";
+        private static string _fileName = "";
         private static readonly LogWritterManager LoggeWritterManager = new LogWritterManager();
         private static bool _initialized;
         private static RegistryMonitor _regMonitor;
         private static readonly Type CurType = typeof(Logger);
 
         public delegate void WriteMessage(string message);
+        public static bool IsRegistryMonitor { get; private set; } = false;
 
         public enum Level
         {
@@ -34,7 +36,7 @@ namespace LoggerCSharp.LogUtil
         public static Level CurrentLevel { get; set; }
 
         // For FileLogger.
-        public static void Setup(string fileName)
+        public static void Setup(string fileName, bool isRegistry = true)
         {
             if (_initialized)
             {
@@ -42,21 +44,14 @@ namespace LoggerCSharp.LogUtil
             }
 
             _initialized = true;
+            _fileName = fileName;
 
             // anything bad happened, do it in None.
             CurrentLevel = Level.None;
 
-            ReadLogLevelFromRegistry(fileName);
-            _regMonitor?.Dispose();
-            _regMonitor = null;
-            _regMonitor = new RegistryMonitor($@"HKLM\{LogBaseRegKey}")
-            {
-                MonitorFlags = MonitorFlags.Value,
-            };
-            _regMonitor.RegChanged += (sender, e) => { ReadLogLevelFromRegistry(fileName); };
-            _regMonitor.Start();
-
-            LoggeWritterManager.AddPublisher(new FileWriter(fileName));
+            ReadLogLevelFromRegistry(_fileName);
+            StartRegitryMonitor(isRegistry);
+            LoggeWritterManager.AddPublisher(new FileWriter(_fileName));
         }
 
         public static void Setup(ILogWritter logWritter, Level logLevel = Level.Trace)
@@ -68,11 +63,26 @@ namespace LoggerCSharp.LogUtil
                 LoggeWritterManager.AddPublisher(logWritter);
             }
         }
+        public static void StartRegitryMonitor(bool isRegistry)
+        {
+            if (!IsRegistryMonitor && isRegistry)
+            {
+                IsRegistryMonitor = isRegistry;
+                _regMonitor?.Dispose();
+                _regMonitor = null;
+                _regMonitor = new RegistryMonitor($@"HKLM\{LogBaseRegKey}")
+                {
+                    MonitorFlags = MonitorFlags.Value,
+                };
+                _regMonitor.RegChanged += (sender, e) => { ReadLogLevelFromRegistry(_fileName); };
+                _regMonitor.Start();
+            }
+        }
 
         public static void Stop()
         {
         }
-        
+
         public static void Log(Level level, string message)
         {
             if (_initialized && level >= CurrentLevel)
@@ -108,7 +118,7 @@ namespace LoggerCSharp.LogUtil
             return null;
         }
 
-        public static WriteMessage Trace()=> Log(Level.Trace);
+        public static WriteMessage Trace() => Log(Level.Trace);
 
         public static WriteMessage Debug() => Log(Level.Debug);
 
