@@ -1,5 +1,4 @@
-# LoggerCSharp
-日志存储库
+# LoggerCSharp - 日志存储库
 可在HKEY_LOCAL_MACHINE\SOFTWARE\LoggerCSharp配置日志要不要写入
 # 如：
 配置HKEY_LOCAL_MACHINE\SOFTWARE\LoggerCSharp下的testlog = Error，那么你的testlog project将只会记录类型为Error的log
